@@ -16,7 +16,7 @@ union header{
 typedef union header header_t;
 
 header_t *head, *tail;
-pthread_mutex_t global_malloc_lock;
+pthread_mutex_t global_palloc_lock;
 
 void *palloc(size_t size){
     /**
@@ -28,7 +28,7 @@ void *palloc(size_t size){
      *
      * Example usage:
      * @code
-     * int *array = (int *)malloc(10 * sizeof(int));
+     * int *array = (int *)palloc(10 * sizeof(int));
      * if (array == NULL) {
      *     // Handle memory allocation failure
      * }
@@ -43,17 +43,17 @@ void *palloc(size_t size){
     header_t *header;
     if(!size)
         return NULL;
-    pthread_mutex_lock(&global_malloc_lock);
+    pthread_mutex_lock(&global_palloc_lock);
     header = get_free_block(size);
     if(header){
         header->s.is_free = 0;
-        pthread_mutex_unlock(&global_malloc_lock);
+        pthread_mutex_unlock(&global_palloc_lock);
         return (void*)(header + 1); //return the address after the header (so that the header remains hidden to end user)
     }
     total_size = sizeof(header_t) + size;
     block = sbrk(total_size);
     if(block == (void*)-1){
-        pthread_mutex_unlock(&global_malloc_lock);
+        pthread_mutex_unlock(&global_palloc_lock);
         return NULL;
     }
     header = block;
@@ -65,7 +65,7 @@ void *palloc(size_t size){
     if (tail)
         tail->s.next = header;
     tail = header;
-    pthread_mutex_unlock(&global_malloc_lock);
+    pthread_mutex_unlock(&global_palloc_lock);
     return (void*)(header + 1);
 }
 
@@ -92,7 +92,7 @@ void pfree(void *block){
 
     if(!block)
         return;
-    pthread_mutex_lock(&global_malloc_lock);
+    pthread_mutex_lock(&global_palloc_lock);
     header = (header_t*)block - 1; //obtain the header of the block
 
     prgbreak = sbrk(0);
@@ -110,11 +110,11 @@ void pfree(void *block){
             }
         }
         sbrk(0 - sizeof(header_t) - header->s.size); //sbrk(-total_size) to free the block
-        pthread_mutex_unlock(&global_malloc_lock);
+        pthread_mutex_unlock(&global_palloc_lock);
         return;
     }
     header->s.is_free = 1;
-    pthread_mutex_unlock(&global_malloc_lock);
+    pthread_mutex_unlock(&global_palloc_lock);
 }
 
 void *pcalloc(size_t num, size_t nsize){
@@ -132,7 +132,7 @@ void *pcalloc(size_t num, size_t nsize){
      *
      * Example usage:
      * @code
-     * int *arr = (int *)calloc(10, sizeof(int));
+     * int *arr = (int *)pcalloc(10, sizeof(int));
      * if (arr == NULL) {
      *     // Handle allocation failure
      * }
@@ -161,8 +161,8 @@ void *prealloc(void *block, size_t size){
     /**
      * Reallocates memory for an array of elements.
      *
-     * @param block A pointer to the memory block previously allocated with malloc, calloc, or realloc.
-     *            If this is NULL, the function behaves like malloc.
+     * @param block A pointer to the memory block previously allocated with palloc, pcalloc, or prealloc.
+     *            If this is NULL, the function behaves like palloc.
      * @param size The new size for the memory block, in bytes.
      *             If this is 0 and ptr is not NULL, the memory block is freed.
      * @return A pointer to the newly allocated memory, which may be different from ptr.
@@ -175,14 +175,14 @@ void *prealloc(void *block, size_t size){
     header_t *header;
     void *ret;
     if(!block || !size)
-        return malloc(size);
+        return palloc(size);
     header = (header_t*)block - 1;
     if(header->s.size >= size)
         return block;
-    ret = malloc(size);
+    ret = palloc(size);
     if(ret){
         memcpy(ret, block, header->s.size);
-        free(block);
+        pfree(block);
     }
     return ret;
 }
