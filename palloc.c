@@ -1,6 +1,5 @@
 #include <unistd.h>
 #include <pthread.h>
-#include <stdio.h> //debug printf
 
 typedef char ALIGN[16];
 
@@ -20,6 +19,25 @@ header_t *head, *tail;
 pthread_mutex_t global_malloc_lock;
 
 void *malloc(size_t size){
+    /**
+     * Allocates a block of memory of the specified size and returns a pointer to the beginning of the block.
+     * The content of the newly allocated memory is not initialized, it contains garbage values.
+     *
+     * @param size The size of the memory block to allocate in bytes.
+     * @return A pointer to the allocated memory block, or NULL if the allocation fails.
+     *
+     * Example usage:
+     * @code
+     * int *array = (int *)malloc(10 * sizeof(int));
+     * if (array == NULL) {
+     *     // Handle memory allocation failure
+     * }
+     * @endcode
+     *
+     * Note:
+     * - Always check if the returned pointer is NULL to ensure that the memory allocation was successful.
+     * - The allocated memory should be freed using the free() function to avoid memory leaks.
+     */
     size_t total_size;
     void *block;
     header_t *header;
@@ -62,6 +80,13 @@ header_t *get_free_block(size_t size){
 }
 
 void free(void *block){
+    /**
+     * @brief Frees the memory space pointed to by ptr, which must have been returned by a previous call to malloc(), calloc(), or realloc().
+     * 
+     * This function deallocates the memory previously allocated by a memory allocation function. If ptr is NULL, no operation is performed.
+     * 
+     * @param block Pointer to the memory block to be freed.
+     */
     header_t *header, *tmp;
     void *prgbreak;
 
@@ -92,8 +117,72 @@ void free(void *block){
     pthread_mutex_unlock(&global_malloc_lock);
 }
 
+void *calloc(size_t num, size_t nsize){
+    /**
+     * Allocates memory for an array of `num` elements of `size` bytes each and 
+     * initializes all bytes in the allocated storage to zero.
+     *
+     * @param num The number of elements to allocate.
+     * @param nsize The size of each element in bytes.
+     * @return A pointer to the allocated memory, or NULL if the allocation fails.
+     *
+     * The `calloc` function allocates memory for an array of `num` elements, each 
+     * of `size` bytes, and initializes all bytes in the allocated memory to zero. 
+     * If the allocation fails, it returns NULL.
+     *
+     * Example usage:
+     * @code
+     * int *arr = (int *)calloc(10, sizeof(int));
+     * if (arr == NULL) {
+     *     // Handle allocation failure
+     * }
+     * @endcode
+     */
+     size_t size;
+     void *block;
+     if(!num || !nsize)
+        return NULL;
+    size = num * nsize;
 
-int main(){
-    printf("Hello World\n");
-    return 0;
+    /* check for integer overflow*/
+    if(nsize != size / num)
+        return NULL;
+    block = malloc(size);
+    
+    if(!block)
+        return NULL;
+    
+    memset(block, 0, size); //init all bytes to 0
+
+    return block;
+}
+
+void *realloc(void *block, size_t size){
+    /**
+     * Reallocates memory for an array of elements.
+     *
+     * @param block A pointer to the memory block previously allocated with malloc, calloc, or realloc.
+     *            If this is NULL, the function behaves like malloc.
+     * @param size The new size for the memory block, in bytes.
+     *             If this is 0 and ptr is not NULL, the memory block is freed.
+     * @return A pointer to the newly allocated memory, which may be different from ptr.
+     *         If the function fails to allocate the requested block of memory, a NULL pointer is returned,
+     *         and the original block of memory is left untouched.
+     *
+     * @note The contents of the memory block are unchanged up to the lesser of the new and old sizes.
+     *       If the new size is larger, the value of the newly allocated portion is indeterminate.
+     */
+    header_t *header;
+    void *ret;
+    if(!block || !size)
+        return malloc(size);
+    header = (header_t*)block - 1;
+    if(header->s.size >= size)
+        return block;
+    ret = malloc(size);
+    if(ret){
+        memcpy(ret, block, header->s.size);
+        free(block);
+    }
+    return ret;
 }
