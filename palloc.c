@@ -18,7 +18,7 @@ typedef union header header_t;
 header_t *head, *tail;
 pthread_mutex_t global_malloc_lock;
 
-void *malloc(size_t size){
+void *palloc(size_t size){
     /**
      * Allocates a block of memory of the specified size and returns a pointer to the beginning of the block.
      * The content of the newly allocated memory is not initialized, it contains garbage values.
@@ -79,7 +79,7 @@ header_t *get_free_block(size_t size){
     return NULL;
 }
 
-void free(void *block){
+void pfree(void *block){
     /**
      * @brief Frees the memory space pointed to by ptr, which must have been returned by a previous call to malloc(), calloc(), or realloc().
      * 
