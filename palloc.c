@@ -117,7 +117,7 @@ void pfree(void *block){
     pthread_mutex_unlock(&global_malloc_lock);
 }
 
-void *calloc(size_t num, size_t nsize){
+void *pcalloc(size_t num, size_t nsize){
     /**
      * Allocates memory for an array of `num` elements of `size` bytes each and 
      * initializes all bytes in the allocated storage to zero.
@@ -147,7 +147,7 @@ void *calloc(size_t num, size_t nsize){
     /* check for integer overflow*/
     if(nsize != size / num)
         return NULL;
-    block = malloc(size);
+    block = palloc(size);
     
     if(!block)
         return NULL;
@@ -157,7 +157,7 @@ void *calloc(size_t num, size_t nsize){
     return block;
 }
 
-void *realloc(void *block, size_t size){
+void *prealloc(void *block, size_t size){
     /**
      * Reallocates memory for an array of elements.
      *
